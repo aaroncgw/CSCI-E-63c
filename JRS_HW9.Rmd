@@ -1,0 +1,366 @@
+---
+title: "CSCI E-63C Week 9 Problem Set"
+author: 'Joshua Sacher'
+date: '`r Sys.Date()`'
+
+output:
+  html_document:
+    df_print: kable
+    number_sections: true
+    toc: true
+    toc_float:
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(cluster)
+library(clue)
+library(pvclust)
+library(NbClust)
+
+# Prevent scientific notation: https://stackoverflow.com/a/25947542/8703244
+options(scipen=999)
+
+knitr::opts_chunk$set(echo = TRUE, fig.width = 10, fig.height = 6)
+```
+
+# Problem 1: within/between cluster variation and CH-index (15 points)
+
+Present plots of CH-index as well as (total) within and between cluster variance provided by K-means clustering on scaled WHS data for 2 through 20 clusters.  Choose large enough value of `nstart` for better stability of the results across multiple trials and evaluate stability of those results across several runs.  Discuss the results and weigh on whether the shapes of the curves suggest specific number of clusters in the data.
+
+## CH-Index function
+
+```{r CH-index functino}
+# Plots between/within ss and CH index and returns a data frame
+# with between ss, total within ss, and ch index
+ch.index <- function(df) {
+  btwn = numeric(20)
+  wthn = numeric(20)
+  chidx = numeric(20)
+  
+  for (k in 1:20) {
+    kf <- kmeans(df, centers = k,nstart = 100)
+    btwn[k] <- kf$betweenss
+    wthn[k] <- kf$tot.withinss
+    if (k > 1) {
+      chidx[k] <- (kf$betweenss / (k - 1)) / (kf$tot.withinss / (nrow(df) - k))
+    }
+  }
+  
+  # Plot within and between sum of squares
+  plot(1:20, btwn, type = "b",lwd = 2, pch = 19, col = "red", 
+       main = "Within and Between Sum of Squares", 
+       xlab = "K", ylab = "Sum of Squares")
+  points(1:20, wthn, type = "b",lwd = 2, pch = 20, col = "blue")
+  text(20, btwn[20], labels = "Between", 
+       pos = 1, cex = 1.5, col = "red")
+  text(20, wthn[20], labels = "Within", 
+       pos = 3, cex = 1.5, col = "blue")
+  
+  # CH index undefined at k=1, so start plotting at 2:
+  plot(2:20, chidx[-1], type = "b", lwd = 2, pch = 19, 
+       main = "CH-Index", xlab = "K", ylab = "CH index")
+  text(2:20, chidx[-1], labels = 2:20, 
+       cex = 1.5, col = "blue", pos = 4)
+  return(data.frame(cbind(between = btwn, within = wthn, ch.index = chidx)))
+}
+
+```
+
+## Apply function to both data sets
+
+```{r Sums of Squares and CH-index}
+# Load and scale WHS data
+whs.scaled <- scale(read.table("whs2018_AnnexB-subset-wo-NAs.txt",sep="\t",header=TRUE,quote=""))
+q.scaled <- scale(quakes)
+
+# WHS data
+whs.ch <- ch.index(whs.scaled)
+cbind(K = 1:20, round(whs.ch, 3))
+
+# Quake data
+q.scaled.ch <- ch.index(q.scaled)
+cbind(K = 1:20, round(q.scaled.ch, 3))
+```
+
+## Discussion
+
+### WHS data set
+
+No clear "winner" emerges as the best number of clusters. The CH-index decreaes with increasing K and has no maximum other than 2. The within-cluster sum of squares is nowhere near 0 at $K = 20$, suggesting there may be a long way to go.
+
+### Quakes
+
+By CH-index, the best choice is $K = 4$ as there is a local maximum. $K = 5$ is very similar, but, given that, it's likely better to go with fewer clusters.
+
+# Problem 2: gap statistics (15 points)
+
+Using the code provided in the lecture slides for calculating gap statistics or one of its implementations available in R (e.g. `clusGap` from library `cluster`), compute and plot gap statistics for K-means clustering of the scaled WHS data for 2 through 20 clusters.  Discuss whether it indicates presence of clearly defined cluster structure in this data.
+
+## Calculations and plots
+
+```{r Gap Stats}
+# https://stackoverflow.com/questions/53159033/how-to-get-the-optimal-number-of-clusters-from-the-clusgap-function-as-an-output
+
+# WHS data
+gap.whs <- clusGap(whs.scaled, kmeans, K.max = 20, verbose = FALSE)
+maxSE(f = gap.whs$Tab[, "gap"], SE.f = gap.whs$Tab[, "SE.sim"])
+plot(gap.whs, main = "Gap Statistics for WHS data")
+
+# Quakes -- warnings suppress because it (often) doesn't converge
+gap.q.scaled <- suppressWarnings(
+  clusGap(q.scaled, kmeans, K.max = 20, verbose = FALSE))
+maxSE(f = gap.q.scaled$Tab[, "gap"], SE.f = gap.q.scaled$Tab[, "SE.sim"])
+# Remove first 3 clusters -- noisy
+maxSE(f = gap.q.scaled$Tab[-c(1:3), "gap"], SE.f = gap.q.scaled$Tab[-c(1:3), "SE.sim"])
+plot(gap.q.scaled, main = "Gap Statistics for Quakes data")
+```
+
+## Discussion
+
+### WHS data set
+
+The `maxSE` function suggests $K = 3$ as the optimal number of clusters. Given the error bars, the (rough) range $3 <= K <= 8$ may be effectively the same. This suggest that no "clear" clusters have been found.
+
+### Quakes data set
+
+`maxSE` suggest $K = 1$ clusters as the optimal number, but that's only because of the drop at $K = 2$. A more reasonable value would be $K = 5$, as seen when the first few values of $K$ are excluded. This matches relatively well with the CH-index above, where both 4 and 5 were nearly identical.
+
+# Problem 3: stability of hierarchical clustering (15 points)
+
+For numbers of clusters K=2, 3 and 4 found in the scaled WHS dataset by (1) `hclust` with Ward method (as obtained by `cutree` at corresponding levels of `k`) and (2) by K-means, compare cluster memberships between these two methods at each K and describe their concordance.  This problem is similar to the one from week 6 problem set, but this time it is *required* to: 1) use two dimensional contingency tables implemented by `table` to compare membership between two assignments of observations into clusters, and 2) programmatically re-order rows and columns in the `table` result to correctly identify the correspondence between the clusters (please see examples in lecture slides).
+
+## Function definitions
+
+```{r hierarchical}
+# Sort function from lecture
+matrix.sort <- function(m) {
+  p = solve_LSAP(m, maximum = TRUE) # find the permutation…
+  return(m[, p]) # and apply it!
+}
+
+# Funciton to compare hierarchical with k-means in a table
+# at different values of K (default is 2:4)
+compare <- function(df, start = 2, stop = 4) {
+  df.dist <- dist(df)
+  df.clust <- hclust(df.dist, method = "ward.D2")
+  plot(df.clust, cex = 0.5, sub = "", xlab = "")
+  for (k in start:stop) {
+    dend <- cutree(df.clust, k = k)
+    km <- kmeans(df, centers = k, nstart = 100)
+    m <- matrix.sort(table(hierach = dend, kmeans = km$cluster))
+    print(paste0("K = ", k, ":"))
+    print(m)
+  }
+}
+```
+
+## Comparison of hierarchical and K-means
+
+Note: for broader look at contingency tables, values for `start` and `stop` can be passed to `compare`.
+
+```{r hierarchical vs k-means}
+# Compare for WHS data
+compare(whs.scaled)
+# compare(whs.scaled, 2, 10)
+
+# Compare for quake data
+compare(q.scaled)
+# compare(q.scaled, 2, 10)
+```
+
+## Discussion
+
+### WHS data set
+
+While there is general agreement between the two clustering methods for $2 <= K <= 4$, there are a number of off-diagonal cluster members. It's actually more consistent than I expected given the noisy data.
+
+### Quakes data set
+
+The concordance across this data set is good, but not perfect. In contrast to the WHS data set, this is _less_ concordant than I expected; the two methods find slightly different clusters.
+
+## For *extra* 5 points: between/within variance in hierarchical clusters
+
+Using functions `between` and `within` provided in the lecture slides calculate between and (total) within cluster variances for top 2 through 20 clusters defined by Ward's hierarchical clustering when applied to the scaled WHS data.  Plot the results.  Compare their behavior to that of the same statistics when obtained for K-means clustering above.
+
+```{r between/within functions}
+# d: Distances, clust: cluster assignments
+within <- function(d, clust) {
+  w <- numeric(length(unique(clust)))
+  for (i in sort(unique(clust))) {
+    members <- d[clust == i, , drop = F]
+    centroid <- apply(members, 2, mean)
+    members.diff <- sweep(members, 2, centroid)
+    w[i] = sum(members.diff ^ 2)
+  }
+  # modified to return SUM
+  return(sum(w))
+}
+
+between <- function(d, clust) {
+  b <- 0
+  total.mean <- apply(d, 2, mean)
+  for (i in sort(unique(clust))) {
+    members <- d[clust == i, , drop = F]
+    centroid <- apply(members, 2, mean)
+    b = b + nrow(members) * sum((centroid - total.mean) ^ 2)
+  }
+  return(b)
+}
+
+# Mostly copied from above
+ch.index.hierarch <- function(df) {
+  df.dist <- dist(df)
+  df.clust <- hclust(df.dist, method = "ward.D2")
+  
+  btwn = numeric(20)
+  wthn = numeric(20)
+  chidx = numeric(20)
+  
+  for (k in 1:20) {
+    btwn[k] <- between(df, cutree(df.clust, k = k))
+    wthn[k] <- within(df, cutree(df.clust, k = k))
+    if (k > 1) {
+      chidx[k] <- (btwn[k] / (k - 1)) / (wthn[k] / (nrow(df) - k))
+    }
+  }
+  
+  # Plot within and between sum of squares
+  plot(1:20, btwn, type = "b",lwd = 2, pch = 19, col = "red", 
+       main = "Within and Between Sum of Squares", 
+       xlab = "K", ylab = "Sum of Squares")
+  points(1:20, wthn, type = "b",lwd = 2, pch = 20, col = "blue")
+  text(20, btwn[20], labels = "Between", 
+       pos = 1, cex = 1.5, col = "red")
+  text(20, wthn[20], labels = "Within", 
+       pos = 3, cex = 1.5, col = "blue")
+  
+  # CH index undefined at k=1, so start plotting at 2:
+  plot(2:20, chidx[-1], type = "b", lwd = 2, pch = 19, 
+       main = "CH-Index", xlab = "K", ylab = "CH index")
+  text(2:20, chidx[-1], labels = 2:20, 
+       cex = 1.5, col = "blue", pos = 4)
+  return(data.frame(cbind(between = btwn, within = wthn, ch.index = chidx)))
+}
+```
+
+```{r calculations and plots}
+# WHS data set
+whs.ch.hierarch <- ch.index.hierarch(whs.scaled)
+cbind(K = 1:20, kmeans = round(whs.ch, 3), hierachical = round(whs.ch.hierarch, 3))
+
+# Quake data set
+q.scaled.ch.hierarch <- ch.index.hierarch(q.scaled)
+cbind(K = 1:20, kmeans = round(q.scaled.ch, 3), hierachical = round(q.scaled.ch.hierarch, 3))
+```
+
+## Bonus discussion
+
+### WHS data
+
+While the magnitudes are slightly different in CH-index, the overall trend is the same: constantly decreasing with no clear maximum other than $K = 2$.
+
+### Quake data
+
+CH-index in this case gives $K = 4$ as the clear maximum, which agrees with the K-means results.
+
+# Problem 4: Brute force randomization in hierarchical clustering (15 points)
+
+Compare distribution of the heights of the clusters defined by `hclust` with Ward's clustering of Euclidean distance between countries in the scaled WHS dataset and those obtained by applying the same approach to the distances calculated on randomly permuted WHS dataset as illustrated in the lecture slides.  Discuss whether results of such brute force randomization are supportive of presence of unusually close or distant sets of observations within WHS data.
+
+```{r brute force funtion}
+brute.force <- function(df) {
+  ori.heights <- hclust(dist(df), method = "ward.D2")$height
+  rnd.heights = numeric()
+  for (i.sim in 1:100) {
+    data.rnd <- apply(df, 2, sample)
+    hw.rnd = hclust(dist(data.rnd), method = "ward.D2")
+    rnd.heights <- c(rnd.heights, hw.rnd$height)
+  }
+  
+  # # Cut tree at maximum random height to find estimated number of clusters?
+  # clust.tmp <- cutree(hclust(dist(df), method = "ward.D2"), h = max(rnd.heights))
+  # nclust <- length(unique(clust.tmp))
+  # print(paste("Estimated number of clusters: ", nclust))
+  
+  plot(ori.heights, rank(ori.heights) / length(ori.heights),
+       col = "red", xlab = "height", ylab = "F(height)", pch = 19
+  )
+  points(rnd.heights, rank(rnd.heights) / length(rnd.heights),
+         col = "blue", pch = 18)
+  text(0, 1, "Actual", col = "red", cex = 2)
+  text(0, 0.95, "Random", col = "blue", cex = 2)
+  abline(v = min(rnd.heights), lty = 3)
+  abline(v = max(rnd.heights), lty = 3)
+}
+```
+
+
+
+```{r use brute force}
+# WHS
+brute.force(whs.scaled)
+
+# Quakes
+brute.force(q.scaled)
+```
+
+
+## Discussion
+
+### WHS data
+
+Roughly 20% of the heights are (roughly) $\le 3$, the absolute lowest height seen in randomized data. 2 of the distances are (much) larger than any observed in the randomized data.
+
+### Quake data
+
+The proportion of low-height data is higher than expected from randomized data. There are also 2 points beyond anything found in 100 ransomization trials.
+
+## Playing with other metrics and methods
+
+### Identification of "significant" clusters with library pvclust
+
+_Warning: takes a good long while to run_
+
+```{r pvclust, cache=TRUE}
+# http://stat.sys.i.kyoto-u.ac.jp/prog/pvclust/
+# pvclust clusters on the columns, so df needs to be transposed
+whs.pv <- pvclust(t(whs.scaled), method.hclust = "ward.D2", 
+                  method.dist = "euclidean", nboot = 1000, 
+                  r = seq(0.7, 1.2, by = 0.1), quiet = TRUE)
+plot(whs.pv, cex = 0.3, cex.pv = 0.5, sub = "", xlab = "")
+pvrect(whs.pv, alpha = 0.95)
+seplot(whs.pv)
+
+q.pv <- pvclust(t(q.scaled), method.hclust = "ward.D2", 
+                  method.dist = "euclidean", nboot = 500, 
+                  r = seq(0.8, 1.2, by = 0.2), quiet = TRUE)
+plot(q.pv)
+pvrect(q.pv, alpha = 0.95)
+```
+
+Based on this analysis, it looks like there are a number of statistically significant clusters in both clusters, but none seem high enough up the tree to encompass all observations
+
+### library NbClust
+
+_Warning: takes a while to run (`quakes` takes HOURS if `alllong` used)_
+
+```{r NbClust WHS, cache=TRUE}
+# WHS data set
+whs.nb <- NbClust(whs.scaled, max.nc = 20, method = "ward.D2", index = "alllong")
+whs.nb$Best.nc[1, order(whs.nb$Best.nc[1,])]
+
+```
+
+```{r NbClust quakes, cache=TRUE}
+# Quakes data set
+q.nb <- suppressWarnings(
+  NbClust(q.scaled, max.nc = 15, method = "ward.D2", index = "all")
+)
+q.nb$Best.nc[1, order(q.nb$Best.nc[1,])]
+```
+
+
+`NbClust` calculates a large number of metrics and then uses consensus to decide what the "best" number of clusters is. The majority give $K = 2$ for the WHS data set and $K = 3$ from the quakes data set.
+

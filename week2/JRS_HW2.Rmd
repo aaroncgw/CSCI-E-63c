@@ -1,0 +1,249 @@
+---
+title: 'CSCI E-63C: Week 2 Problem Set'
+author: 'Joshua Sacher'
+date: '`r Sys.Date()`'
+
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    toc_float:
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+library(cowplot)
+library(ggplot2)
+library(GGally)
+library(reshape2)
+knitr::opts_chunk$set(echo = TRUE, fig.height = 20, fig.width = 20)
+```
+
+# A few notes from your student
+
+## Sources used
+
+For `ggplot`, the [https://ggplot2.tidyverse.org/reference/](tidyverse reference site) is teaching me almost everything. Ideas for modifying histograms comes from [http://www.sthda.com/english/wiki/ggplot2-histogram-plot-quick-start-guide-r-software-and-data-visualization](STHDA). Not sure I'm using `ggplot` correctly, but, hey, great chance to learn.
+
+Some cool ideas for formatting HTML in R Markdown are found at [https://bookdown.org/yihui/rmarkdown/html-document.html](bookdown.org).
+
+## Extra stuff
+
+I played around with a bunch of things, so there's some "bonus" code. Feel free to ignore.
+
+---
+
+# Wireless Indoor Localization Data Set (30 points)
+
+This dataset presents an example of classification problem (room identity) using continuous predictors derived from the strengths of several WiFi signals on a smartphone. More details about underlying data can be found in corresponding [dataset description](http://archive.ics.uci.edu/ml/datasets/Wireless+Indoor+Localization) at UCI ML website. To load data into R please use data file `wifi_localization.txt` available both at the course website and/or in UCI ML dataset repository.
+
+## Part 1
+
+Once the dataset in loaded into R, please name appropriately data set attributes (variables), determine the number of variables (explain which ones are predictors and which one is the outcome) and observations in the dataset (R functions such as `dim`, `nrow`, `ncol` could be useful for this), generate summary of the data using `summary` function in R and generate pairwise XY-scatterplots of each pair of continuous predictors, while indicating the outcome using colour and/or shape of the symbols (you may find it convenient to use `pairs` plotting function). Describe your observations and discuss which of the variables are more likely to be informative with respect to discriminating these rooms (this literally means: just by looking at the plots, for the lack of better methods that we have not developed just yet, which variables do you think will be more useful for letting us tell which room the smartphone is in).
+
+### Response  
+
+The data set is composed of 2000 observations of 7 WiFi signal measurements for each room (the response variable and 8th column). There are 500 observations per room for each of 4 rooms.  
+
+_NOTE: I'm referring to **more negative** numbers as "**lower**," but a more negative number is actually a stronger WiFi signal_
+
+Visually, the following measurements seem to be useful for discriminating each room:  
+
+* Room 1: Low in all measurements (universally low could be meaningful)
+* Room 2: Measurements 1, 4, 7 are high while others are low to average
+* Room 3: Measurement 1 and 4 might be helpful, but all measurements seem (slightly above?) average
+* Room 4: Measurements 3 and 5 are high while 4 and 6 are low  
+
+Measurement 2 does not seem to contriubute much to discrimination ability.  
+Measurements 1 and 4 are strongly correlated (0.92), while some others show some correlation (next highest is 0.72 for 6 and 7).
+
+### Code
+
+```{r read and view wifi data, cache=TRUE}
+# Read in space-separated data
+wifi <- read.table("wifi_localization.txt", col.names = c(1:7, "room"))
+
+# Check for NAs and look at dimensions
+anyNA(wifi)
+dim(wifi)
+
+# Convert rooms to factors and look at summary stats
+wifi$room <- factor(wifi$room)
+summary(wifi)
+
+# Plot pairwise graphs
+ggpairs(wifi, 
+        aes(col = wifi$room, alpha = 0.5),
+        lower = list(combo = wrap("facethist", binwidth = 0.5)), 
+        progress = FALSE
+        )
+
+# A closer look at that last line of histograms
+# Function to generate histograms
+hists <- function(X) {
+  p <- ggplot(wifi, aes(x = wifi[[X]], color = room, fill = room))
+  p <- p + geom_histogram(binwidth = 0.5, position = "identity", alpha = 0.4)
+  p <- p + labs(title = paste("Distribution of", X), x = "WiFi Signal")
+  return(p)
+}
+# Use the function above for each of the 7 measurements
+plots <- lapply(names(subset(wifi, select = -room)), hists)
+# Plot as a grid
+plot_grid(plotlist = plots, ncol = 2)
+```
+
+## Part 2
+
+Next, please comment on whether given the data at hand the problem of detecting room identity on the basis of the strength of the WiFi signal appears to be an easy or a hard one to solve. Try guessing, using your best intuition, what could be an error in predicting room identity in this dataset: 50%, 20%, 10%, 5%, 2%, less than that?  Later in the course we will work with this dataset again to actually develop such a classifier, and at that point you will get quantitative answer to this question. For now, what we are trying to achieve is to make you *think* about the data and to provide a (guesstimate) answer just from visual inspection of the scatterplots. Thus, there is no wrong answer at this point, just try your best, explain your (qualitative) reasoning, and make a note of your answer, so you can go back to it several weeks later.  
+
+### Response
+
+It looks to be relatively easy to classify rooms 2 and 4, and harder to accurately classify rooms 1 and 3. For room 3, discriminating measurements seem fewer and all values in the distributions overlap with other rooms' measurements. For room 1, classification is based on a universally low response, which could complicate things.  
+I'd guess we could get to 10-20% error (but I hope I learn that it's lower with some magic method)
+
+## Part 3
+
+Finally, please reflect on potential usage of such a model (predicting room identity on the basis of WiFi signal strength) and discuss some of the limitations that the predictive performance of such a model may impose on its utility. Suppose that we can never achieve perfect identification (it's statistics after all), so we will end up with some finite error rate. For instance, if this model was integrated into a "smart home" setup that turns the light on or off depending on which room the smartphone is in, how useful would  be such model if its error rate was, say, 1%, 10% or 50%?  Can you think of alternative scenarios where this type of model could be used which would impose stricter or more lax requirements for its predictive performance?  Once again, the goal here is to prompt you to consider bigger picture aspects that would impact the utility of the model -- there is hardly right or wrong answer to this question, but please do present some kind of summary of your thoughts on this topic, even if in a couple of sentences.
+
+### Response
+
+For something like turning lights on or off or, perhaps, setting a phone to silent in a meeting room and turning sound back on in other parts of an office, we'd likely want error at or below 5%. While a 1 in 20 chance of sitting in the dark wouldn't be ideal, it might still be useful.  
+
+If used for something like refining geographic location (similar to how Google Maps can use WiFi signals to get rough locations), maybe more error can be tolerated -- or even desired if too exact of a location is a privacy concern
+
+A much lower error rate would be needed for critical applications like directing emergency service providers responding to a 911 call.
+
+---
+
+# Amount of Fund Raising Contributions (30 points)
+
+This dataset presents an example of a regression problem -- predicting dollar amount of donors' contributions from a direct mail campaign based on their demographics and history of past contributions.  This dataset is a cleaned up subset of one of the datasets used in data mining competitions in the late 90s and it comes with the requirement of describing its source in rather broad (i.e. non-specific) terms if or when it is used for educational purposes.  To load data into R please use file `fund-raising.csv` available at the course website in Canvas.  More details about the data attributes can be found in corresponding file `fund-raising-notes.txt` also available from our course website in Canvas. 
+
+## Part 1
+
+Once the dataset in loaded into R, please determine the number of variables (explain which ones are predictors -- categorical vs. continuous -- and which one is the outcome) and observations in the dataset (R functions such as `dim`, `nrow`, `ncol` could be useful for this), generate summary of the data using `summary` function in R and generate pairwise XY-scatterplots of each pair of *continuous* attributes.
+
+Describe your observations and discuss which attributes might be more useful for predicting the outcome as defined in the `fund-raising-notes.txt` dataset description. 
+
+Try being creative: visualizing and discussing potential associations between each of individual (continuous) predictor variables and the continuous outcome is relatively straightforward. But this time around you cannot really use the outcome to stratify the points in the *pairwise* predictor-predictor scatterplots same way we did it in Problem 1: there we had just four possible values of the (categorical) outcome, but how many distinct values of the donor contribution do we have now? Do the plots make much sense and are they even interpretable if you use all those distinct values of contributed amount, as they are? Is there a way around this?
+
+### Response
+
+`fund-raising.csv` contains 3470 obserevations of 12 variables along with the response variable (`contrib`). While `gender` is obviously discrete, there could be arguments as to how one should treat semi-continuous variables like `ncontrib` or `promocontrib`
+
+Based on correlations, the last, average, and max contribution amounts look like the best predictors of contibutions (last and average are significant in a simple linear model. The max contribution isn't and is dropped in a backward-stepwise regression)
+
+### Code
+
+```{r fundraising contributions}
+# Load and process data set
+fund <- read.csv("fund-raising.csv")
+anyNA(fund)
+dim(fund)
+head(fund)
+summary(fund)
+
+# Remove gender (categorical)
+fund_continuous <- subset(fund, select = -gender)
+fund_discrete <- 
+
+# Check correlations to contributions (explicitly)
+cor(fund_continuous$contrib, y = subset(fund_continuous, select = -contrib))
+
+# Plot pairwise graphs of continuous (or continuous-ish) variables
+ggpairs(fund_continuous, 
+        aes(col = fund$gender, alpha = 0.5),
+        lower = list(combo = wrap("facethist", binwidth = 0.5)), 
+        progress = FALSE
+        )
+```
+
+```{r regression just for kicks, cache = TRUE}
+# Just for fun:
+fit <- lm(contrib ~ ., data = fund)
+fit2 <- lm(contrib ~ . * ., data = fund)
+
+# summary(fit)
+summary(fit)$call
+summary(fit)$adj.r.squared
+
+# summary(fit2)
+summary(fit2)$call
+summary(fit2)$adj.r.squared
+
+fit_step <- step(fit, direction = "backward", trace = FALSE)
+fit_step2 <- step(fit2, direction = "backward", trace = FALSE)
+
+# summary(fit_step)
+summary(fit_step)$call
+summary(fit_step)$adj.r.squared
+
+# summary(fit_step2)
+summary(fit_step2)$call
+summary(fit_step2)$adj.r.squared
+```
+
+### Boxplots
+
+For **extra 5 points** generate boxplots for some of the continuous vs categorical predictors, rendering potential relationships between them.
+
+```{r boxplots, fig.height = 40}
+# Function to generate plots
+makeBoxes <- function(Y){
+  b <- ggplot(data = fund, aes(x = gender, y = fund[[Y]], col = gender))
+  b <- b + geom_boxplot(outlier.colour = "black", outlier.shape = 4)
+  b <- b + labs(y = Y)
+  return(b)
+}
+
+boxes <- lapply(names(fund_continuous), makeBoxes)
+plot_grid(plotlist = boxes, ncol = 2)
+```
+
+```{r violin plots, fig.height = 40}
+# Bonus violin plots for fun
+makeViolins <- function(Y){
+  v <- ggplot(data = fund, aes(x = gender, y = fund[[Y]], fill = gender))
+  v <- v + geom_violin(draw_quantiles = c(0.25, 0.5, 0.75), alpha = 0.5)
+  v <- v + labs(y = Y)
+  return(v)
+}
+
+violins <- lapply(names(fund_continuous), makeViolins)
+suppressWarnings(plot_grid(plotlist = violins, ncol = 2))
+```
+
+---
+
+# Tibbles (extra 5 points)
+
+Fluency in R (as any other programming language) involves ability to look up, understand, and put to use as necessary new functionality that has not been explored before.  One of relatively recent additions to R are so-called tibbles that can be seen as ["modern take on data frames"](https://cran.r-project.org/web/packages/tibble/vignettes/tibble.html).  To earn extra points offered by this problem, please look up tibble use and constrast their behavior to that of conventional data frame using one of the datasets you have already created above.  To earn all points available your solution must include *more than one* example of substantive differences (same kind of difference illustrated by two datasets counts as *one example*).  Please also comment (briefly is fine) on why the use of tibbles may result in more robust code (or not, it's fine if you happen to find tibbles to be in fact clunkier and not resulting in cleaner code - but you have to argue your point, either way).
+
+## Response
+
+One of the nice features of `tibble`s is that the data type is displayed on print along with a number of [other features](https://cran.r-project.org/web/packages/tibble/vignettes/tibble.html#printing). The fact that strings are not coerced into factors could be beneficial in some cases. It looks like data frames are trying to be "helpful" by prepping your data for certain types of analysis -- could be good or bad depending on your needs. 
+
+A bit of an annoyance is the reliance on a _further_ external library (`readr`) to read data _direcrtly_ into a `tibble` (`read_csv()`, etc.) so that you can take advantage of the lack of data coercion.  
+
+Another feature of `tibble`s is that they have strict behavior regarding both subsetting and recycling. This could again "protect" against `R`'s "helpfulness". This forces a programmer to be **clear** and **specific** (subsetting) and could prevent data entry errors (no recycling in lists unless length = 1). Having come from working with other programming languages, I see this as a benefit, but understand how others might not like this.
+
+## Code
+
+```{r the trouble with tibbles}
+library(tibble)
+library(readr)
+
+# Check out the differences in the Fundraising data set
+head(fund)
+fund_tibble <- read_csv("fund-raising.csv")
+fund_tibble
+
+# Subsetting: no partial matching of column names with tibbles
+fund$gap[1:5]    # fund$gapmos
+fund_tibble$gap[1:5]
+fund_tibble$gapmos[1:5]
+
+# Subsetting: no switching classes on subsetting
+class(fund[,1])
+class(fund_tibble[,1])
+```

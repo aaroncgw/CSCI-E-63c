@@ -1,0 +1,143 @@
+<!DOCTYPE html><html>
+<head>
+    <title>HarvardKey - Login</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta http-equiv="Cache-control" content="no-store" /><meta http-equiv="Cache-control" content="no-cache" /><meta http-equiv="Pragma" content="no-cache" /><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="icon" href="/cas/themes/harvard/images/favicon.ico" type="image/x-icon" /><link rel="stylesheet" href="/cas/themes/harvard/css/styles.css?styles-version=1.0.1" /><script type="text/javascript" src="/cas/webjars/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript" src="/cas/webjars/bootstrap/4.1.0/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body class="backgroundPhotography">
+
+<div class="header">
+    <div class="headerBurger dropdown">
+        <div class="burgerWrap dropdown-toggle" id="menu" data-toggle="dropdown" aria-expanded="true">
+            <div class="burger"></div>
+            <div class="burgerLabel">MENU</div>
+        </div>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="menu">
+            <li role="presentation"><a role="menuitem" tabindex="-1" href="https://key.harvard.edu">HOME</a></li>
+            <li role="presentation"><a target='_blank' role="menuitem" tabindex="-1" href="http://reference.iam.harvard.edu/faq">FAQ</a></li>
+            <li role="presentation"><a target='_blank' role="menuitem" tabindex="-1" href="http://reference.iam.harvard.edu/help">HELP</a></li>
+            <li role="presentation"><a role="menuitem" tabindex="-1" href="/cas/logout">LOGOUT</a></li>
+        </ul>
+    </div>
+    <img class="logo" src="/cas/themes/harvard/images/HarvardKeyLogo.png" alt="" /></div>
+
+<div id="content" class="content">
+    <div class="login box homescreen">
+        <h1 class="welcome">Please Log In</h1>
+        <p>To log in, please select your login type from the tabs below and enter your credentials. If you're not sure
+            what login type
+            to use, <a target="_blank" href="http://reference.iam.harvard.edu/itemized-guide-login-types" tabindex="14">look
+                here for how you login with HarvardKey.</a></p>
+
+        <form method="post" id="fm1">
+
+            <div id="casErrorDiv" class="alert alert-danger" role="alert" style="display:none;">
+                </div>
+
+            <div style="overflow:hidden;">
+                <div class="tabButtons">
+                    <div class="tabButton"
+                             name="source"
+                             id="HarvardKey"
+                             value="HARVARDKEY"
+                             aria-controls="loginIdPanel" aria-selected="true"
+                             tabindex="1">
+                            <p>HarvardKey</p>
+                        </div>
+                        <div class="tabButton"
+                             name="source"
+                             id="XID"
+                             value="XID"
+                             aria-controls="loginIdPanel" aria-selected="false"
+                             tabindex="2">
+                            <p>XID</p>
+                        </div>
+                    </div>
+            </div>
+
+            <div id="loginIdPanel" class="idExplanation" aria-hidden="false">
+                <label for="username" id="loginIdLabel">Login Name (in the form of an email address):</label>
+                <input id="username" size="40" maxlength="100" tabindex="11"
+                           type="text"
+                           accesskey="u"
+                           path="username" autocomplete="off" htmlEscape="true"
+                           placeholder="me@examplemailprovider.com" name="username" value=""/><label for="password" id="PINLabel">Password:</label>
+                <input id="password" size="40" maxlength="100" tabindex="12" path="password"
+                       type="password"
+                       accesskey="p"
+                       htmlEscape="true" autocomplete="off" name="password" value=""/></div>
+            <input id="source" type="hidden" name="source" value=""/><input type="hidden" name="execution" value="189c9b37-f5ea-4a62-bcd5-2fbeb18cb95c_ZXlKaGJHY2lPaUpJVXpVeE1pSjkuUUdiNGl1RG9Kb05QODhIQ24rU1lSVUwwemVmV1hxYmhLSEtOZW5RNGRYTVBUakpBZGxiUmVKQnZjWXBWTEFPaHRVd2ExdEdwVHcrdlgyVlUwY3RJOURsVDlGbXZKTG0zQUVkbFFjSk8vQjNZY0grZUdCcVNadDJzSmVxZityWTU5WDEyWnpvZTRZamswbWVSRFJCMzcyU0VwOCt1cEFNL2orQTF5cDBSdVVaQk9TTGxuMkk5Z2MwMk1HdXdZaHVCdWduRWZJN0pnalBWMWVFcThXTzNka1o2UjM1czVVNFhtNldWcTFjSnVlOVpuUlJhMm1BcERzd3B1Q0tjMjU0MEtPdk1JL2xUWlIyYjNNVnlOcytMbTdBNlJiTjRCL25BL08wNVg2TjM0ckc1NUFscm5GUmJhNEJ3ci9LYWI1T0VIWjVSaXpoOTVsUHZWZ3BVWEk3aG5Zbkp3THRONTJVQzFFeFFsTTRNdFlnMGUrTVpJNHEveGFRalZvaFZxMUg5c3ZtY0NDN0FUcWxmVThCQy9jb2tETDJNMGNEbTVTVER6R295M3ZKSTU5cklaVFJxcXdvLzZPcTlic2lZQlVCa3ovS0ZyTmFQVUkyL3VRUkVwbmtzVnZIVUpKWWY3S05peEE2cU12OUdkL1lCZ2syM0tESStxZXN2OUFtdWx0cFJKWXdORzRxTS90SGlyQlJsWmhFQWJOVElXbTVzYjc1N0Z4Y1QzS29yUUk3RWRuaXVHM2M0V0lNSERBcHB0eXU2Q1lvMm9YOEZ4dWZvVGZnTVp2SFJYZTNDbjRuUGNOcm1ZYWhZNGJ2dWhHTTFjK1ZlcG1jRXViNHBUZm42bWY2MGRJMXdPZTU3bGhpUlhEQ2srTWwxUngzWlU4Vi85REkrWUhJQ2luMXl4TUtBeWZlUlNsUHNLcDRqQXB4Z1VOTHZGRTFKWFhDRk9pZU9pUTlibE03RzU2OTNLUDErOXlLanN2ajg4bU5jWmNiZTF0emhyUklLdHpqQTBUamIwaWdxSFZBcVZDRWlETDVhejdWQkFKS01uaVlsdm1SMGJBQ0lPM0ZNWm9OYVVGQURCeGlZbW5YYnNkZXlaVmZPZWNad1Fkem5LajZKQjZickNXazd5cmVPcGhUaE5nZGhpOCtqczlpdHBVS0puNlU3KzltTEdrRDZJZCtBaWk3UU9zQmNsS3JKSmpPSnNkZFY2ellOY3NUbklaOVlqcUsxMUdhcWU4V1JsOUdyRGJuK2srY2ZiNmM2Y2FTeVRTTU96ZkUzTTVwWmthMjBZMXI2QVhwTEdNV1l0TUh3bDFXc2hETmszOHJRVFVoU01pUlVtTHJZMjlCNHVLUXh1bHI5Wmc5R0hiOW0vNzByTG9kOWVMOXJPSk5XbkVqYjBNYnk4YUN6akovRnFNK2JmNmo4bnJjdjJrWTl3NVYwOG12WjhFY0NERVRaVnM4NGs0VGc1UEkzTExPTXZGeGlJZ3U0Z0ttUWpwOGtOZjFTdmk3bGVFVTZ1RVVhaCtCdnh1c1ZGUGhrT3FlWndzSUFrWlZIRDIrZTRHNFdjZ1gyWmhlZk5MRFdEZzZnZmdIOHJNeVNTcCtuTW5XcDNCZHhpUGk4YmlnRU1tMGY1bWk4b1RvWC82SCtZVHZMeEV5VEphdDFUTWF5aGI2d2ZySlRkYW1IZWVxMFJKWmVndVJZQUk3SytpWUJHZ1VUQjBLUVhmSURPNXoyTFNvSHVqdTlXeWZ6bkV5bmVDd1d4N1JuWXFPZ3hwb3VnSG55QjI5ZU04dVB1MVhTQzlaRVlWb1RFMFhKS3FSVHF4eGdSNk4wMXcxd2wwNEJUQ2EybXNQdEFvK1lCRkFiM2tDVlpneEJZZE1qNklOQWIzYkMrb1M4UGFURXkyRklwVWFCdTZiUzQ2MDNzSnFIUlpWUVJackJ4LzBwcHV6QzN0U3h3WWVCUmJ3VkE5c2dpV0Z1bUtjWHllVDBKSktvNmJIbHBrbkVBTlliSDlaUWpMckt0NGZGOTJIdVFNWHBtcnhtQUFNQzI1VWQwdnlnbWRrZEJmc3poRzhoUTlBeHNaaU5MMzlWY0M2WmZXQWFtLzhHYUdYY1JMTE42cXJkVTJRQkw3MjJJVitNRHd4R0hTdjFjSkM4aWlkSkI5c05NVlJIbUZzRituWGVJVE0yUkxXcGxNN1cxM1oyQVFTdzZBQnlsUnpibUVSNW53bHdMYjJZQVh3bWhLREtoOE5xczVZNWJEYnFyUm1kUlhBekVyTHBwSW5KWGI2MEpxcktKYTVrVUxjR2wzVkRQdk9mbzArdWNXcVBVQkMzenRVbDMxWngrcU5vZWJRcTUxV0h5OHBIRmhoSmRxVkZDUEN6VjdPVzJXOHlTeW54K2Z6QjlBamttSGJ1ZzZjQ0NuYzZRMjNhUmdrMUJNTEgwM1BUQnY2MUd4QUVhVHVCU1VkVmhOY2FNS0tPclNtendLajhkVzNsOWtWQ0xDZk1Odk1lMmp4RUlKQ0p3cUZ0MVN5NE5LQ3RLVUpTTXFJSzVteHJLYk41bGxMWkI4TTFLdE1sdDFTUjdnNkc5K1N3UUhhb1hnQVBkU0JaRTlTVGozNnVmcmsybEFSRUR2WFI2MzMrZnNCb0R0d1A0d3JvT202T1d2dGxmTHBmZXNhZ0ZHYVNmT09LeTdCYXVQZ2hBMlhCZk5JdkhxU0E2cjlzWXBpQTJPS3Q3VzJWWjhtYUpTWDNtRWN1MWIxOTV5aDd6U3JndGIxMFJwMytrK0VlVklpU3UzQUR3cE1pcTBXelJEbWtrdWVEeUVTR2d2NllzM2xRVlRTb1RyQzF2ZE56a2llSG83cmNKakwyRHdKZng0SlJpM3QwZFBTc2NKYkZvWXNSMXhyVWNUaFg3cllWYVdVL1RkYUNFUGxmOExCZWJJUVNTMXVCVUNNcGtPRVJMUDNCVjJsamJORnpqa2FiQVlhN0htZGJ1UnY1RXdUczl6ZGJWY2lLY0VVLzA0SGlwR2RFNVZOVE5hcE4xcjdDOHpDZXBUblZ5NmhXSGk0ZmZMcGh2Z3pwZlFxNmpicGREWFN2dXVvRUpFRWdJTkRUYTF2TGVCV2pNa0I3aUEydUNHcU5UWnFMcDF1QTFpcWZBU1Z4RXpJd3pZMFlHOWp3QURLQk1ScWZQOUd4bDd0eFlsclBVN1JMdytpb2pESCtmelVjMENDNTd1OUJ1S0xjeG81TFkxdlgyZ2lxcWlrb21PQlVVdTJiZGlPaGF6RkUwQ2VWbThhTU1nQm0ya2M0ejRVcWl0a2syOTV1V0p2QTFHZGNuMUJjRC9mMk5XcFJXTExPMjdQTmFDNzRoR2s0SU1RUVhvYWVUREFjNjhtY0pZRjA1aEZ4OFUwRmpObjh3QUxtbk9TcXNLcVdOaC9Sak40bEZhV3pXdEU4bzVOaVA0ZjRiOXN6UGJOSnBnbFlBQ0tHVS9BS1VFdUZORkZOcFM4YWI4cFNJZ0VSWEoxdU93SmlrMDRNdGRqcHZpd1prRTBNMWV6Syt5RnhYdVc2UGJzdVkzaFFHZVhzM1J6NEJvaUxlOEE2VWtGTi9pcFpkOHhLdFI1eFVJTyt5emtVZ3Q4NXhaSm92TG1yNEtneFBhQjhVWXQ4TWNZTEVWSWpKZnJDcGdjUHFMQnhmbFJzQytNTW9JSVVTVTAzMHE1OE10bGIzSEZValEzVndLYWVQRGY3M0c5WnJVcUtTekIwYmVyOTZIZ1kxcFR3anF5bnVkWU5XcUZiRWc5RFJpV0owODBiZnZCYVZ2S3JvWVp0OC9XQ2ZtSmlKK0hIUjNXd0ZsOVBVcEFhbnhrMUxmVEJydXRNNmpQWml5M2V3K1UvRGxZOUJFQW1lSmlLWlRQYWUyOE83TXFqTTZmNEN6SERPVE5PNEpJV3Y4emJrTkxrNFBNWDdOYmI1UmhSQlA1MVljZnc4aG5XTEZZRjQzLzBEZ3ZiMEZELy9WVUM0MlBDaG5QM1N1VXhPVXlCK0F5KzVkVVRMWmhidVY5cjZuV0VORjNheUVxMW4vSFdXRTAzZ3VjSXg1eFlYSDljSlVVK01WT2lFTnBQajZPSUxXQ2Z6WXFyb1RLQm5tU0hXclJLZGNrS1M2V2FLcnk5cFBWQWdZcEw1d0lGY1JYVkNYaVExZVVRZ3VDRGtGaFAzZlYrUTBpL0pQdE9JVnE0TWFjUi96ajlWdWFJa2RlUUJVSzhFQkFyR21rVm56c0x0ZHA1cmdOb2VkNldmSXlLTVpYVjdjaWNhK0FNVExpTkVORktzcTV5YTA4WFNiR1ZhZC91c0hKZEN3S3lKUWtYdGlHZHdlYldPamZQL0NDWnM4ODJqZUdCMkVWdTE0bkdndDR0OFBsSWFJVWJUb295WExHc01ybzRvOWFRcGdxdkZXemVac0NlamhQR1U0dzROeG52dFAzSzdhaU15YVg5WXBNSnlxVjNrV3BCcS9Ra2VyNi9UNWVBUUxDNEhYaXZ4RldLZzBSVk5nc3FWdVhJUWg5TDg4RDZMbTVvWjllRzFaaThWeVNvVkY2YStxaEl2MUdYSGdOcWY0ZFVYZDNRSG4zMSs1WHM0bDlidUVocXZMblZ1cGR3SmxYckk2c0QxcHVZUDhKeC85TXhOUDRmN0RnbG1oK1dzd0dBMkcrbFhCNnZWZ2dhT2hPbldod1NMT0RRSG9EdUpVMXlxVjlPRFMyK1gvZzdyUXJtYjBuZUZZdnBJMVVwY29GcWpQUDFrWjE2Um5WM29HdHZsQVFIbEFFMjQ0SGYvbzJYRjJ6cm1weTE1d1BHdDMwVnROWFBlUVRPdGp5T1ByRHdJNmR0RnZVbVkxQmJjWWliaVU4bWk2VWJPazFReldncGx6ZXVxWExSUTVsRkFPNnlGY0hnRS9MYmlKUXNldGR2L24zRVp1MnE5VUo1ZW8yNTl6RXFBb0UyL2g5bENORUd5ZFluaTFsL0RNZ0RtcHhOazJOR2FqeWdqV3h2eWlqLzczTTdlZUZOVHZBUmlkaWJUTkd6cm52eWorV1dwOG5wV0wzM1hPNnZ2Rys2bmZST3orMEt1eFMyY2VKSHhzMnhvcU1CTGVrPS5JM2YwQ0RxczBOYm1zclYxUWlMOHNiZ2UtQjNYWkpsb05UTktsQWJLd0VkT3NLWE5fdUM3TEhISEtQb2U1Q2x6aWxqVzRVWWI4ZXlwMFhPcDFzTnJ1dw=="/><input type="hidden" name="_eventId" value="submit"/><input type="hidden" name="geolocation"/><input id="submitLogin" type="submit" class="callToAction" name="submit" value="Login" tabindex="13"/></form>
+
+        <p><a tabindex="16" href="https://key.harvard.edu/account-recovery/forgot-password">Recover/Reset Your HarvardKey Password ></a></p>
+
+        <p><a tabindex="17" href="https://key.harvard.edu/account-recovery/request-login-name-reminder">Recover Your HarvardKey
+            Login Name ></a></p>
+
+        <p><a tabindex="18" href="http://reference.iam.harvard.edu/change-password" target="_blank">Recover/Reset
+            Passwords for Other Login Types ></a></p>
+
+        <p><a tabindex="19" href="https://key.harvard.edu/" target="_blank">Back to HarvardKey Home ></a></p>
+
+    </div>
+
+    <script type="text/javascript">
+        var i = "One moment please..."
+        $( document ).ready(function() {
+            $("#fm1").submit(function () {
+                $(":submit").attr("disabled", true);
+                $(":submit").attr("value", "Please wait..");
+                console.log(i);
+                return true;
+            });
+        });
+    </script>
+
+</div>
+
+<footer>
+    <div class="footerWrap">
+        <img class="logo" src="/cas/themes/harvard/images/HarvardLogo.png" alt="" /><div class="vertical"></div>
+        <div class="footerText">
+            <div class="legal">
+                <p class="footerBreak">
+                    Copyright &#169;&nbsp;1999 - 2019 The President and Fellows of Harvard College
+                </p>
+                <p>
+                    The HarvardKey system, and the systems, data, and other resources that require HarvardKey
+                    authentication for access, are only for legitimate Harvard University users. Use may be
+                    monitored, and improper use of the HarvardKey system or those resources may result in
+                    disciplinary action and civil and criminal charges.
+                </p>
+            </div>
+            <div class="footerLinks">
+                <a href="http://reference.iam.harvard.edu/privacy-statement" target="_blank">PRIVACY</a>
+                <a href="http://www.accessibility.harvard.edu/" target="_blank">ACCESSIBILITY</a>
+                <a href="http://reference.iam.harvard.edu/help" target="_blank">HELP</a>
+                <a href="http://reference.iam.harvard.edu/faq" target="_blank">FAQ</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script type="text/javascript" src="/cas/webjars/jquery-cookie/1.4.1-1/jquery.cookie.js"></script>
+<script type="text/javascript" src="/cas/themes/harvard/js/cas.js"></script>
+<script>
+function loadjQueryUI() {
+	var jqueryUrl = "\/cas\/webjars\/jquery-ui\/1.12.1\/jquery-ui.min.js"; 
+	head.load(jqueryUrl, loadjQueryCookies);
+}
+function loadjQueryCookies() {
+	var jqueryUrl = "\/cas\/webjars\/jquery-cookie\/1.4.1-1\/jquery.cookie.js"; 
+	head.load(jqueryUrl, notifyResourcesAreLoaded(resourceLoadedSuccessfully));
+}
+function notifyResourcesAreLoaded(callback) {
+    if (typeof callback === "function") {
+        callback();
+    }
+}
+</script>
+
+<script type="text/javascript" src="/cas/themes/harvard/js/scripts.js?scripts-js-version=1.0.0"></script>
+</body>
+</html>
