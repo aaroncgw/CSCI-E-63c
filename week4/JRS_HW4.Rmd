@@ -1,0 +1,298 @@
+---
+title: "CSCI E-63C: Week 4 Problem Set"
+author: 'Joshua Sacher'
+date: '`r Sys.Date()`'
+
+output:
+  html_document:
+    df_print: kable
+    number_sections: true
+    toc: true
+    toc_float:
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, fig.height = 20, fig.width = 20)
+library(corrplot)
+library(data.table)
+library(ggplot2)
+library(parallel)
+library(reshape2)
+library(scales)
+
+# Prevent scientific notation: https://stackoverflow.com/a/25947542/8703244
+options(scipen=999)
+```
+
+# Preface
+
+This week problem set is focused on using resampling (specifically, bootstrap) to estimate and compare training and test error of linear models with progressively increasing number of variables as linear and quadratic (ultimately all pairwise combinations) terms. The goal is to advance your familiarity with fitting multiple regression models, to develop hands-on experience with the use of resampling and to observe first hand the discrepancy in the trending of training and test error with the increase in model complexity.
+
+We will continue working with the fund raising dataset that we familiarized ourselves with during the previous two weeks.  Below the main steps of this week problem set are illustrated on a simulated dataset.
+
+[ ... ] Deleted! -JRS
+
+---
+
+# Problem: estimating multiple regression error rate by resampling (60 points)
+
+This week problem set closely follows what is explained in the preface above, except that instead of using simulated dataset, you are expected to use the fund raising dataset that you have already worked with during the previous weeks, that now has also predicted values (column `predcontr`) for the outcome as described below. It is available on this course website in canvas (file `fund-raising-with-predictions.csv` on canvas page for this week).
+
+The first column -- `contrib` -- is the outcome we are trying to predict.  The last column -- `predcontr` -- represents outcome predictions from one of the simpler models used by one of the participants in the data mining competition that used this fund raising dataset back in the 90's.  We will use this attribute only as a reference to compare to our model predictions.  It will have to be excluded from model building.  The column before last -- `gender` -- is a categorical attribute that we will also omit for the purposes of this week problem set in the interests of simplicity.  In the end you should be working with a dataset with twelve continuous attributes -- one outcome, `contrib`, and eleven predictors (`gapmos`,	`promocontr`,	`mincontrib`,	`ncontrib`,	`maxcontrib`,	`lastcontr`,	`avecontr`,	`mailord`,	`mindate`,	`maxdate`	and `age`).  Because of distributional properties of multiple attributes in this dataset, you are better off working with log-transformed *both* predictors and the outcome.  Because several values in this dataset are zeroes and to avoid dealing with NaNs, just add "1" before the log-transform to all values in this dataset (e.g. `myDat <- log(myDat+1)`).
+
+## Sub-problem 1: prepare the dataset (10 points)
+
+Read in the dataset, drop categorical attribute (`gender`) and predictions by the competition participants (`predcontr`), log-transform predictors and outcome as described above, rearrange columns in the dataset in the decreasing order of absolute values of their correlation with the outcome (`contrib`).  So that in the resulting data table the outcome (`contrib`) is the first column, the next one is the predictor that is the most (positively or negatively) correlated with it, and so on.  You may find it convenient to use R function `order` for that.
+
+```{r Data loading}
+# Read in CSV, subset to remove gender and prediction, and log-transform
+fund <- read.csv("fund-raising-with-predictions.csv")
+data <- subset(fund, select = c(-gender, -predcontr))
+data <- log(data + 1)
+
+# Calculate correlation of contrib to all other predictors, show in order
+corrs <- as.data.frame(cor(data$contrib, data))
+corrs[order(-abs(corrs))]
+
+# Re-arrange data in descending absolute value of correlation
+data <- data[order(-abs(corrs))]
+head(data)
+
+# Pretty correlations
+corrplot.mixed(cor(data), upper = "color",
+               number.cex = 2.5,
+               tl.cex = 1.5, tl.col = "black")
+```
+
+## Sub-problem 2: add quadratic terms to the dataset (10 points)
+
+Use the code presented in the preface as a template to develop your own procedure for adding to the fund raising dataset containing outcome (`contrib`) and all continuous predictors (`gapmos` through `age`) all pairwise products of continuous predictors (e.g. `gapmos` x `gapmos`, `gapmos` x `promocontr`, ..., `age` x `age`).  The data used here has to be the one from fund raising dataset, _not_ simulated from normal distribution as shown in the preface.  In the end your dataset should have 78 columns: `contrib`, 11 predictors and 11*12/2=66 of their pairwise combinations.
+
+```{r Quadratic and interaction terms}
+interact <- function (d){
+  # Get names of predictors
+  predictors = names(subset(d, select = -contrib))
+  
+  # Loop over each predictor
+  for (i in 1:length(predictors)){
+    # Loop over all predictors from self onward
+    for (j in i:length(predictors)){
+      # Store new column name
+      newcol <- paste0(predictors[i], "X", predictors[j])
+      # Calculate new data as product of 2 columns
+      # and add new data to existing data frame
+      d[newcol] = d[[predictors[i]]] * d[[predictors[j]]]
+    }
+  }
+  return(d)
+}
+data <- interact(data)
+dim(data)
+head(data)
+```
+
+
+## Sub-problem 3: fit multiple regression models on the entire dataset (10 points)
+
+As illustrated in the preface above, starting from the first, most correlated with `contrib`, predictor, fit linear models with one, two, ..., all 77 linear and quadratic terms on the entire dataset and calculate resulting (training) error for each of the models. Plot error as a function of the number of predictors in the model (similar to the plot in the preface that shows just the training error on the entire dataset).  Also, indicate the error from predicting all outcomes to be its average on the entire dataset as shown in the preface.  Because the underlying data is different the change of the regression error with the number of attributes included in the model in the plot that you obtain here for fund raising dataset will be different from that shown in the preface.  Please comment on this difference.
+
+* The difference is that the drop in the real data set follows more of a smooth exponential decay pattern that appears to be approaching $\approx0.33$. 
+
+```{r Lots of model building, fig.height=10, fig.width=10}
+# Function to build a model from partial data frame
+build.model <- function (n, d.f){
+  return(lm(contrib ~ ., data = d.f[, 1:n]))
+}
+
+# Build and store models
+models <- lapply(2:ncol(data), build.model, d.f = data)
+
+# Function to calculate training error for the models above
+calc.training.error <- function (i){
+  return(sqrt(mean((data$contrib - predict(models[[i]]))^2)))
+}
+
+# Store number of predictors and calculated errors
+errs <- data.frame(predictors = 1:length(models),
+                   training.error = sapply(1:length(models), calc.training.error))
+
+# Error based on using the mean as prediction
+error.of.mean <- sqrt(mean((data$contrib - mean(data$contrib))^2))
+error.of.mean
+
+# Since a model using only the mean is just Y = beta{0}, could be 
+# added to the plot with predictors = 0. Not doing it for now
+# as it messes up the scale. Uncomment below to add
+
+# errs <- rbind(data.frame(predictors = 0, training.error = error.of.mean), errs)
+
+# Plot training error as function of number of predictors
+error.plot <- ggplot(data = errs, aes(x = predictors, y = training.error)) + 
+              geom_point(size = 3) +
+              geom_hline(yintercept = 0.33, linetype = "dashed", col = "blue") +
+              labs(title = "Training Error vs. Number of Predictors", 
+                   x = "Number of Predictors", 
+                   y = "Training Error") +
+              theme(text = element_text(size = 20))
+error.plot
+```
+
+## Sub-problem 4: develop function performing bootstrap on fund raising dataset (10 points)
+
+Modify function `bootTrainTestErrOneAllVars` defined in the preface to perform similar kind of analysis on the fund raising dataset.  Alternatively, you can determine what modifications are necessary to the fund raising dataset, so that it can be used as input to `bootTrainTestErrOneAllVars`.
+
+* Tried to write my own without looking at the above function. Added comments for clarity, but let me know if you need more info!
+
+```{r My bootstrap function}
+# Takes in the number of parameters in the model and a data frame containing data to be fit
+# Returns mean and SD for training and test errors
+boot = function (param, N = 1000, d.f = data) {
+  # Space to store results
+  training.error = numeric(length = N)
+  test.error = numeric(length = N)
+  
+  for (i in 1: N){
+    # Vector of row indexes for use in training
+    idx <- sample(x = nrow(d.f), size = nrow(d.f), replace = TRUE)
+    # Subset out training and test data
+    train <- d.f[idx, ]
+    test <- d.f[-idx, ]
+    # Build model on training data
+    fit <- build.model(param, d.f)
+    # Calculate training and test error and store
+    training.error[i] <- sqrt(mean((train$contrib - predict(fit))^2))
+    test.error[i] <- sqrt(mean((test$contrib - predict(fit, newdata = test))^2))
+  }
+  # Return a list with error stats
+  return(list(param = param, 
+              training.error.mean = mean(training.error),
+              training.error.sd = sd(training.error),
+              test.error.mean = mean(test.error),
+              test.error.sd = sd(test.error)))
+}
+
+```
+
+## Sub-problem 5: use bootstrap to estimate training and test error on fund raising dataset (20 points)
+
+Use function developed above to estimate training and test error in modeling `contrib` for the fund raising dataset.  Plot and discuss the results.  Compare model error over the range of model complexity to that obtained by the competition participants (as a difference between `contrib` and `predcontr` in the original full dataset once the log-transform performed before proceeding with modeling here has been accounted for -- by either calculating error on log-transform of `contrib` and `predcontr` or transforming our model predictions back to the original scale of `contrib` measurements)
+
+```{r Perform the bootstrap, cache=TRUE}
+boot.results.list <- lapply(2:ncol(data), boot)
+# https://stackoverflow.com/questions/32059798/list-of-named-lists-to-data-frame
+boot.results <- rbindlist(boot.results.list)
+```
+
+```{r Bootstrap plotting}
+# Function that takes in the above data frame and generates a ggplot object(?)
+boot.plot <- function (d.f){
+  p <- ggplot(data = d.f, aes(x = param)) + 
+    geom_point(aes(y = training.error.mean, color = "Mean Training Error ± SD"), size = 5) + 
+    geom_errorbar(aes(ymin = training.error.mean - training.error.sd,
+                      ymax = training.error.mean + training.error.sd,
+                      color = "Mean Training Error ± SD"),
+                  size = 1) +
+    geom_point(aes(y = test.error.mean, color = "Mean Test Error ± SD"), size = 5) +
+    geom_errorbar(aes(ymin = test.error.mean - test.error.sd,
+                      ymax = test.error.mean + test.error.sd,
+                      color = "Mean Test Error ± SD"),
+                  size = 1) +
+    labs(title = "Error vs # Parameters: Bootsrap with 1000 replicates", 
+         x = "Number of Parameters",
+         y = "RMSE") +
+    theme(text = element_text(size = 36))
+  return(p)
+}
+
+predcontr.error <- sqrt(mean((data$contrib - log(fund$predcontr + 1)) ^ 2))
+                               
+boot.plot(boot.results) + labs(subtitle = paste(nrow(data), "observations")) + 
+  geom_hline(yintercept = predcontr.error, 
+             linetype = "dashed", 
+             color = "darkred", 
+             size = 2) +
+  geom_text(aes(10, predcontr.error, label = "predcont error", vjust = -1), 
+            size = 10, 
+            color = "darkred")
+              
+```
+
+## Extra points problem: training and test error on subsets of the data (5 points)
+
+Perform tasks specified above (using bootstrap to estimate training and test error), but applying them only to the first 200, 500 and 1000 observations in the fund raising dataset provided.  Comment on how the behavior of training and test error across the range of model complexity changes with the change in the sample size.  For the ease of comparisons and interpretation, please make sure that all three resulting plots (error vs. number of predictors) use the same limits for the vertical (Y) axis.
+
+* With fewer replicates:
+  * Test error increases much more with increasing number of predictors
+  * Training error decreases somewhat
+  * Standard deviations are much larger, especially for test data
+
+```{r Error on subsets, cache=TRUE}
+boot.results.200 <- rbindlist(lapply(2:ncol(data), boot, d.f = data[1:200, ]))
+boot.results.500 <- rbindlist(lapply(2:ncol(data), boot, d.f = data[1:500, ]))
+boot.results.1000 <- rbindlist(lapply(2:ncol(data), boot, d.f = data[1:1000, ]))
+
+boot.plot(boot.results.200) + ylim(0.15, 0.9) + labs(subtitle = "200 observations")
+boot.plot(boot.results.500) + ylim(0.15, 0.9) + labs(subtitle = "500 observations")
+boot.plot(boot.results.1000) + ylim(0.15, 0.9) + labs(subtitle = "1000 observations")
+```
+
+## Extra points problem: using centered and scaled predictor values (5 points)
+
+Given the undesirable effects of having highly correlated predictors in the model (for the reasons of collinearity, variance inflation, etc.) it would be more adviseable to center and scale predictors in this dataset prior to creating higher order terms.  There is a function `scale` in R for that.  Please explore the effect of using such transformation.  You should be able to demonstrate that it does decrease correlations between predictors (including their products) while it has very little impact on the performance of the resulting models in terms of training/test error.  If you think carefully about what is necessary here, the required change could be as small as adding one (optional) call to `scale` placed strategically in the code and then compiling and comparing results with and without executing it.
+
+```{r Data scaling and correlation}
+# Build scaled data by subsetting original, ordering by correlation as before,
+# log transforming, scaling, and adding 2nd order terms 
+# split over a few lines for readability
+data.scaled <- subset(fund, select = c(-gender, -predcontr))[order(-abs(corrs))]
+data.scaled <- as.data.frame(scale(log(data.scaled + 1)), col.names = names(data.scaled))
+data.scaled <- interact(data.scaled)
+
+corrs.unscaled <- cor(data)
+corrs.scaled <- cor(data.scaled)
+
+# Visual examination
+corrplot(corrs.unscaled, method = "color", order = "AOE", tl.col = "black")
+corrplot(corrs.scaled, method = "color", order = "AOE", tl.col = "black")
+
+# Mean and boxplot of absolute correlation (without self-correlation)
+mean(abs(corrs.unscaled[corrs.unscaled != 1]))
+mean(abs(corrs.scaled[corrs.unscaled != 1]))
+
+old.par <- par(mar = c(7, 7, 4, 2))
+boxplot(abs(corrs.unscaled[corrs.unscaled != 1]), 
+        abs(corrs.scaled[corrs.unscaled != 1]),
+        names = c("Unscaled", "Scaled"),
+        ylab = "abs(correlation)", 
+        col = c("orange", "lightblue"),
+        cex.axis = 2.5, cex.lab = 3)
+par(old.par)
+
+# (re)build linear models with top 15 parameters 
+# ("15" roughly chosen from bootstrap above)
+fit.unscaled <- lm(contrib ~ ., data = data[, 1:15])
+fit.scaled <- lm(contrib ~ ., data = data.scaled[, 1:15])
+
+# Summary shows that the models are nearly statistically identical
+# Looking at adj.R.squared as an example
+print("Adjusted R-squared unscaled/scaled:")
+summary(fit.unscaled)$adj.r.squared
+summary(fit.scaled)$adj.r.squared
+
+# No real differences here
+old.par <- par(mfrow = c(2, 2))
+plot(fit.unscaled)
+plot(fit.scaled)
+par(old.par)
+
+# Training RMSE for both -- not sure how to compare after scale
+print("RMSE unscaled/scaled:")
+sqrt(mean((data$contrib - predict(fit.unscaled)) ^ 2))
+sqrt(mean((data.scaled$contrib - predict(fit.scaled)) ^ 2))
+
+# VIF shows the real difference!
+print("VIF unscaled/scaled")
+vif(fit.unscaled)
+vif(fit.scaled)
+```

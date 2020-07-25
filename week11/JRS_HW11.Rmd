@@ -1,0 +1,263 @@
+---
+title: "CSCI E-63C Week 11 Problem Set"
+author: 'Joshua Sacher'
+date: '`r Sys.Date()`'
+
+output:
+  html_document:
+    df_print: kable
+    number_sections: true
+    toc: true
+    toc_float:
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+library(randomForest)
+library(MASS)
+library(class)
+library(ggplot2)
+library(ggrepel) # Neat idea for more readable labels!
+# Cache stuff so I can be confident I'm writing about the correct plots without setting a seed artificailly
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+## Helper functions
+
+### Generate data
+
+```{r generate data}
+# nObs: How many observations
+# nClassVars: How many predictors are associated with outcome
+# nNoiseVars: How many predictors are not
+# deltaClass: To modulate average difference between two classes' predictor values
+generateData <- function(nObs = 1000, nClassVars = 2, nNoiseVars = 1, deltaClass = 1, plot.pairs = FALSE) {
+  # Use data.frame so that variables will automatically be named "X1" "X2" etc.
+  simData <- data.frame(matrix(rnorm(nObs * (nClassVars + nNoiseVars)), 
+                 nrow = nObs, ncol = nClassVars + nNoiseVars))
+  # Space to hold/calculate class information
+  classData <- 1
+  # Make some correlations and classifications
+  for ( iTmp in 1:nClassVars ) {
+    delta <- sample(deltaClass * c(-1,1), nObs, replace = TRUE)
+    simData[, iTmp] <- simData[, iTmp] + delta
+    classData <- classData * delta
+  }
+  classData <- classData > 0
+  
+  # If you want to check out the data
+  if (plot.pairs){
+    pairs(simData, col = as.numeric(classData))
+  }
+
+  simData <- data.frame(cbind(class = classData, simData))
+  return(simData)
+}
+  
+```
+
+### LDA and RF error
+
+Functions generate tables that can be used for later analysis
+
+```{r}
+rfEval <- function (train, test, ...) {
+  rfRes <- randomForest(as.factor(class) ~ ., data = train, ...)
+  rfTmpTbl <- table(test$class, predict(rfRes, newdata = test))
+  return(rfTmpTbl)
+}
+
+ldaEval <- function(train, test, ...) {
+  ldaRes <- lda(class ~ ., data = train, ...)
+  ldaTmpTbl <- table(test$class, predict(ldaRes, newdata = test)$class)
+  return(ldaTmpTbl)
+}
+```
+
+
+### KNN error
+
+Returns a data frame with values for error and k. Number of k's can be limited (`k.max`) so that we're not trying to use $k = 100$ when there are only 25 observations.
+
+```{r KNN error}
+knnEval <- function(train, test, k.max = 500) {
+  kvals <- numeric()
+  for (val in sort(unique(floor(1.2^(1:50))))) {
+    if (val < k.max) {
+      kvals <- c(kvals, val)
+    }
+  }
+  
+  dfTmp <- data.frame(err = numeric(), k = numeric())
+  for (k in kvals) {
+    # Remove classifier (or it works too well!)
+    trainData <- subset(train, select = -class)
+    testData <- subset(test, select = -class)
+    knnRes <- knn(train = trainData, test = testData, cl = train$class, k = k)
+    tmpTbl <- table(test$class, knnRes)
+    dfTmp <- rbind(dfTmp, data.frame(err = 1-sum(diag(tmpTbl))/sum(tmpTbl), k = k))
+  }
+  
+  return(dfTmp)
+}
+```
+
+### Error plots
+
+Takes in data frame (knn) and data tables (lda, rf) and generates a plot similar to the one shown in the introduction.  
+I made a few tweaks as to labels, axes, and such.
+
+```{r error plots}
+plotResults <- function(knn.df, ldaTbl, rfTbl, subtitle = "") {
+  lda.rf <- data.frame(type = c("LDA", "RF"),
+                       err = c(1 - sum(diag(ldaTbl)) / sum(ldaTbl),
+                               1 - sum(diag(rfTbl)) / sum(rfTbl)))
+  g <- ggplot(knn.df, aes(x = k, y = err)) + geom_point() + scale_x_log10() 
+  # If you want everything on the same scale, can uncomment below
+  # g <- g + ylim(0, 1)
+  g <- g + geom_text_repel(aes(k, err, label = round(err, 3)), data = knn.df, size = 3)
+  g <- g + geom_hline(aes(yintercept = err, color = type), data = lda.rf)
+  g <- g + geom_label(aes(1, err, label = round(err, 3), color = type), data = lda.rf)
+  g <- g + ggtitle("KNN error rate compared to LDA and RF", subtitle = subtitle)
+  print(g)
+}
+```
+
+## Quick test: regenerate introduction plot
+
+```{r sanity check}
+trainTmp <- generateData()
+testTmp <- generateData(nObs = 10000)
+rfTbl <- rfEval(trainTmp, testTmp)
+ldaTbl <- ldaEval(trainTmp, testTmp)
+knn.df <- knnEval(trainTmp, testTmp)
+plotResults(knn.df = knn.df, ldaTbl = ldaTbl, rfTbl = rfTbl, subtitle = "Intro plot regeneration")
+```
+
+
+# Sub-problem 1 (15 points): effect of sample size
+
+Generate training datasets with `nObs=25`, `100` and `500` observations such that two variables are associated with the outcome as parameterized above and three are not associated and average difference between the two classes is the same as above (i.e. in the notation from the above code `nClassVars=2`, `nNoiseVars=3` and `deltaClass=1`).  Obtain random forest, LDA and KNN test error rates on a (for greater stability of the results, much larger, say, with 10K observations) test dataset simulated from the same model.  Describe the differences between different methods and across the sample sizes used here.
+
+## Plots
+
+```{r changes in nObs}
+# Generate test data
+test.10k <- generateData(nObs = 10000)
+
+for (n in c(25, 100, 500)) {
+  trainTmp <- generateData(nObs = n)
+  rfTbl <- rfEval(trainTmp, test.10k)
+  ldaTbl <- ldaEval(trainTmp, test.10k)
+  knn.df <- knnEval(trainTmp, test.10k, k.max = n)
+  subtitle <- paste(n, "observations in training data")
+  plotResults(knn.df = knn.df, ldaTbl = ldaTbl, rfTbl = rfTbl, subtitle = subtitle)
+}
+
+```
+
+## Discussion
+
++ I expected all models to improve with increasing numbers of observations
+  + Random Forest increases as expected
+  + LDA does not in this case, but might be due to random chance
+  + KNN improves from 25 to 100, but not much from 100 to 500
++ For KNN, all values of `nObs` result in at least a few values of $k$ that perform the best
+  + That value of $k$ increases with the number of observations (~7, ~10, and ~80 in this case)
+  + Large values of $k$ perform poorly -- fitting to too much noise
+
+# Sub-problem 2 (15 points): effect of signal magnitude
+
+For training datasets with `nObs=100` and `500` observations simulate data as shown above with average differences between the two classes that are same as above, half of that and twice that (i.e. `deltaClass=0.5`, `1` and `2`).  Obtain and plot test error rates of random forest, LDA and KNN for each of the six (two samples sizes times three signal magnitudes) combinations of sample size and signal strengths.  As before use large test dataset (e.g. 10K observations or so) for greater stability of the results.  Describe the most pronounced differences across error rates for those datasets: does the increase in the number of observations impact the error rate of the models?  Does change in the magnitude of signal impact their performance?  Are different classifier approaches impacted in a similar way?
+
+## Plots
+
+```{r signal magnitude}
+for (d in c(0.5, 1, 2)) {
+  testTmp <- generateData(nObs = 10000, deltaClass = d)
+  for (n in c(100, 500)) {
+    trainTmp <- generateData(nObs = n, deltaClass = d)
+    rfTbl <- rfEval(trainTmp, testTmp)
+    ldaTbl <- ldaEval(trainTmp, testTmp)
+    knn.df <- knnEval(trainTmp, testTmp, k.max = n)
+    subtitle <- paste(n, "observations,", "delta =", d)
+    plotResults(knn.df = knn.df, ldaTbl = ldaTbl, rfTbl = rfTbl, subtitle = subtitle)
+  }
+}
+```
+
+## Discussion
+
++ Increasing separation between signal and noise would be expected to make classification easier
+  + With delta of 0.5, none of the models do well with classification, only slightly outperforming chance regardless of `nObs`
+  + Changes based on `nObs` are more obvious with delta of 1
+  + With delta of 2, even a lower value for `nObs` are okay
++ LDA performs universally poorly. Maybe very sensitive to noise?
++ RF performs much better with increasing `nObs` (as above) and with increasing `deltaClass` (signal magnitude)
++ KNN outperforms other methods at some value of $k$.
+  + Similar to RF at higher values of `nObs` and `deltaClass`
+
+# Sub-problem 3 (15 points): varying counts of predictors
+
+For all possible pairwise combinations of the numbers of variables associated with outcome (`nClassVars=2` and `5`) and those not associated with the outcome (`nNoiseVars=1`, `3` and `10`) -- six pairwise combinations in total -- obtain and present graphically test errors from random forest, LDA and KNN.  Choose signal magnitude (`deltaClass`) and training data sample size so that this simulation yields non-trivial results -- noticeable variability in the error rates across those six pairwise combinations of attribute counts.  Describe the results: what is the impact of the increase of the number of attributes associated with the outcome on the classifier performance?  What about the number of attributes not associated with outcome - does it affect classifier error rate?  Are different classifier methods affected by these simulation parameters in a similar way?
+
+## Plots
+
+```{r}
+nObs <- 1000
+deltaClass <- 1
+for (cl in c(2, 5)) {
+  for (n in c(1, 3, 10)) {
+    testTmp <- generateData(nObs = 10000, nClassVars = cl, nNoiseVars = n)
+    trainTmp <- generateData(nClassVars = cl, nNoiseVars = n)
+    rfTbl <- rfEval(trainTmp, testTmp)
+    ldaTbl <- ldaEval(trainTmp, testTmp)
+    knn.df <- knnEval(trainTmp, testTmp)
+    subtitle <- paste0(nObs, " observations, ", "delta = ", deltaClass, ", Class Vars = ", cl, ", Noise Vars = ", n)
+    plotResults(knn.df = knn.df, ldaTbl = ldaTbl, rfTbl = rfTbl, subtitle = subtitle)
+  }
+}
+```
+
+## Discussion
+
++ As expected, increasing the number of noise variables decreases accuracy
+  + However, RF and KNN are relatively resistant to noise
+    + For RF, only $\sqrt{N}$ values are used at each split in the tree. Over a large number of trees, the strength of prediction from the "right" variables will overcome the noise.
+    + $N(0, 1)$ noise averages out for KNN?
++ Surprisingly, having 5 correlated variables does not perform well with any method
+  + No good explanation for that. Multicollinearity?
+
+# Sub-problem 4: (15 points): effect of `mtry`
+
+Parameter `mtry` in the call to `randomForest` defines the number of predictors randomly chosen to be evaluated for their association with the outcome at each split (please see help page for `randomForest` for more details).  By default for classification problem it is set as a square root of the number of predictors in the dataset.  Here we will evaluate the impact of using different values of `mtry` on the error rate by random forest.
+
+For `nObs=5000`, `deltaClass=2`, `nClassVars=3` and `nNoiseVars=20` generate data using the above approach, run `randomForest` on it with `mtry=2`, `5` and `10` and obtain corresponding test error for these three models.  Describe the impact of using different values of `mtry` on the test error rate by random forest and compare it to that by LDA/KNN. 
+
+## Tables and Plots
+
+Plots still useful for comparison!  
+Adding `mtry = 23` to look at bagging.
+
+```{r}
+trainTmp <- generateData(nObs = 5000, deltaClass = 2, nClassVars = 3, nNoiseVars = 20)
+testTmp <- generateData(nObs = 10000, deltaClass = 2, nClassVars = 3, nNoiseVars = 20)
+for (m in c(2, 5, 10, 23)) {
+  rfTbl <- rfEval(trainTmp, testTmp, mtry = m)
+  ldaTbl <- ldaEval(trainTmp, testTmp)
+  knn.df <- knnEval(trainTmp, testTmp)
+  subtitle <- paste("5000 observations, delta = 2, Class Vars = 3, Noise Vars = 20, mtry =", m)
+  plotResults(knn.df = knn.df, ldaTbl = ldaTbl, rfTbl = rfTbl, subtitle = subtitle)
+  
+  print(paste("mtry =", m))
+  print(rfTbl)
+}
+```
+
+## Discussion
+
++ Increases in `mtry` within values provide (2, 5, 10) and all the way to bagging (`mtry = 23`) lead to a decrease in RF error
+  + With `mtry` $\ge$ `nClassVars`, does noise at each decision cancel out? More likely to include a correlated variable? Spurrious correlation in noise? A bit surprising.
++ LDA is of no use with this many noise variables.
++ KNN still does well -- better than RF at all values of $k$
+  
